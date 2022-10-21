@@ -1,7 +1,4 @@
-*Project from Logistic Regression with SAS 223481-1380, summer 2021/2022;
-*Is feeling of closeness to the political party connected to demographical, educational and social factors?;
-*Binary logistic regression for the data from the 9th European Social Survey, analysed for Austria;
-*Compiled by Anna Michalik and Sebastian Muraszewski;
+*Compiled by Sebastian Muraszewski;
 
 *#Assigning a new library;
 libname Projekt '/home/u49823031/sasuser.v94/Projekt';
