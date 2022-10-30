@@ -1,0 +1,196 @@
+*Read in data;
+libname dane '/home/u60987581/WORK/';
+
+*sprawdzam na zbiorze train;
+data dane_train_num;
+	set dane.abt_sam_beh_train;
+run;
+
+*************************************
+*lista zmiennych, które będę analizować;
+%let list = app_spendings app_number_of_children app_income app_char_marital_status 
+app_char_job_code app_char_home_status app_char_city app_char_cars act_cus_utl act_cus_seniority 
+act_cus_pins act_cus_n_statC act_cus_n_statB act_cus_n_loans_hist act_cus_n_loans_act 
+act_cus_loan_number act_cus_dueutl act_cus_cc act_age act_Cncr act_CMin_Due act_CMin_Days 
+act_CMax_Due act_CMax_Days ;
+
+*regresja logistyczna stepwise;
+proc logistic data=dane_train_num 
+descending plots=all ;
+class app_char_cars app_char_city app_char_home_status app_char_job_code app_char_marital_status; 
+model default_cus12 = &list/
+rsquare;
+run; *descending = kolejność 1-0, modelujemy czy = 1;
+ods graphics off; 
+
+*bez stepwise - już wybrane docelowe zmienne bez 
+act_cus_n_loans_act, która była zbyt przechylona na 1;
+proc logistic data=dane_train_num 
+	descending plots=all ;
+	class app_char_cars app_char_city app_char_home_status app_char_job_code app_char_marital_status; 
+	model default_cus12 =  act_CMax_Due app_char_job_code act_cus_pins 
+	app_char_home_status app_income act_cus_n_statC/ 
+	rsquare
+	aggregate scale=none;
+	run; *descending = kolejność 1-0, modelujemy czy = 1;
+ods graphics off; 
+
+
+*dystrybucja zmiennych;
+data dane_wybrane;
+	set dane.abt_sam_beh_train;
+	KEEP default_cus12 act_CMax_Due app_char_job_code act_cus_pins 
+		app_char_home_status app_income act_cus_n_statC;
+run;
+
+proc logistic data=dane_wybrane 
+descending plots=all ;
+class  app_char_home_status app_char_job_code ; 
+model default_cus12 = act_CMax_Due app_char_job_code act_cus_pins 
+		app_char_home_status app_income act_cus_n_statC/
+		rsquare;
+run; *descending = kolejność 1-0, modelujemy czy = 1;
+ods graphics off; 
+
+PROC print DATA=dane_wybrane (obs=10); 
+RUN;
+
+%macro dist001(Var=/*Variable*/); *dist001 to nazwa funkcji, Var to jej parametr;
+ title "&Var."; *definiuję tytuł każdej sekcji to nazwa zmiennej z listy;
+	proc freq data=dane_wybrane; *robi frequency tables ze zbioru e01, który nazwaliśmy wyżej;
+	 tables &Var. / out=f01; *robi proc freq dla kolejnych zmiennych wylistowanych niżej;
+	run;
+	proc sgplot data=dane_wybrane; 
+	 vbar &Var.; *bar chart;
+	run;
+	title; *odpala ten tytuł;
+%mend dist001; *%mend kończy makro + jego nazwa;
+%dist001(Var=default_cus12);
+%dist001(Var=app_char_home_status);*d;
+%dist001(Var=app_char_job_code);
+%dist001(Var=act_cus_pins);
+%dist001(Var=act_CMax_Due);
+%dist001(Var=act_cus_n_statC);
+
+* correlation matrix for the data;
+ods output PearsonCorr=Corr_P;
+proc corr data=dane_wybrane;
+    var act_CMax_Due act_cus_pins app_income act_cus_n_statC;
+run;
+
+proc sort data=Corr_P;
+    by Variable;
+run;
+
+proc transpose data=Corr_P out=CorrLong(rename=(COL1=Corr)) 
+        name=VarID;
+    var act_CMax_Due act_cus_pins app_income act_cus_n_statC;
+    by Variable;
+run;
+
+proc sgplot data=CorrLong noautolegend;
+  heatmap x=Variable y=VarID / colorresponse=Corr colormodel=ThreeColorRamp; 
+  text x=Variable y=VarID text=Corr / textattrs=(size=10pt); 
+  label Corr='Pearson Correlation';
+  yaxis reverse display=(nolabel);
+  xaxis display=(nolabel);
+  gradlegend;
+run;
+
+*****************************************;
+
+*sprawdzam na zbiorze train;
+data dane_valid_num;
+	set dane.abt_sam_beh_valid;
+run;
+
+*************************************
+*lista zmiennych, które będę analizować;
+%let list = app_spendings app_number_of_children app_income app_char_marital_status 
+app_char_job_code app_char_home_status app_char_city app_char_cars act_cus_utl act_cus_seniority 
+act_cus_pins act_cus_n_statC act_cus_n_statB act_cus_n_loans_hist act_cus_n_loans_act 
+act_cus_loan_number act_cus_dueutl act_cus_cc act_age act_Cncr act_CMin_Due act_CMin_Days 
+act_CMax_Due act_CMax_Days ;
+
+*regresja logistyczna stepwise;
+proc logistic data=dane_valid_num 
+descending plots=all ;
+class app_char_cars app_char_city app_char_home_status app_char_job_code app_char_marital_status; 
+model default_cus12 = &list/
+rsquare;
+run; *descending = kolejność 1-0, modelujemy czy = 1;
+ods graphics off; 
+
+*bez stepwise - już wybrane docelowe zmienne bez 
+act_cus_n_loans_act, która była zbyt przechylona na 1;
+proc logistic data=dane_valid_num 
+	descending plots=all ;
+	class app_char_cars app_char_city app_char_home_status app_char_job_code app_char_marital_status; 
+	model default_cus12 =  act_CMax_Due app_char_job_code act_cus_pins 
+	app_char_home_status app_income act_cus_n_statC/ 
+	rsquare
+	aggregate scale=none;
+	run; *descending = kolejność 1-0, modelujemy czy = 1;
+ods graphics off; 
+
+
+*dystrybucja zmiennych;
+data dane_wybrane;
+	set dane.abt_sam_beh_train;
+	KEEP default_cus12 act_CMax_Due app_char_job_code act_cus_pins 
+		app_char_home_status app_income act_cus_n_statC;
+run;
+
+proc logistic data=dane_wybrane 
+descending plots=all ;
+class  app_char_home_status app_char_job_code ; 
+model default_cus12 = act_CMax_Due app_char_job_code act_cus_pins 
+		app_char_home_status app_income act_cus_n_statC/
+		rsquare;
+run; *descending = kolejność 1-0, modelujemy czy = 1;
+ods graphics off; 
+
+PROC print DATA=dane_wybrane (obs=10); 
+RUN;
+
+%macro dist001(Var=/*Variable*/); *dist001 to nazwa funkcji, Var to jej parametr;
+ title "&Var."; *definiuję tytuł każdej sekcji to nazwa zmiennej z listy;
+	proc freq data=dane_wybrane; *robi frequency tables ze zbioru e01, który nazwaliśmy wyżej;
+	 tables &Var. / out=f01; *robi proc freq dla kolejnych zmiennych wylistowanych niżej;
+	run;
+	proc sgplot data=dane_wybrane; 
+	 vbar &Var.; *bar chart;
+	run;
+	title; *odpala ten tytuł;
+%mend dist001; *%mend kończy makro + jego nazwa;
+%dist001(Var=default_cus12);
+%dist001(Var=app_char_home_status);*d;
+%dist001(Var=app_char_job_code);
+%dist001(Var=act_cus_pins);
+%dist001(Var=act_CMax_Due);
+%dist001(Var=act_cus_n_statC);
+
+* correlation matrix for the data;
+ods output PearsonCorr=Corr_P;
+proc corr data=dane_wybrane;
+    var act_CMax_Due act_cus_pins app_income act_cus_n_statC;
+run;
+
+proc sort data=Corr_P;
+    by Variable;
+run;
+
+proc transpose data=Corr_P out=CorrLong(rename=(COL1=Corr)) 
+        name=VarID;
+    var act_CMax_Due act_cus_pins app_income act_cus_n_statC;
+    by Variable;
+run;
+
+proc sgplot data=CorrLong noautolegend;
+  heatmap x=Variable y=VarID / colorresponse=Corr colormodel=ThreeColorRamp; 
+  text x=Variable y=VarID text=Corr / textattrs=(size=10pt); 
+  label Corr='Pearson Correlation';
+  yaxis reverse display=(nolabel);
+  xaxis display=(nolabel);
+  gradlegend;
+run;
